@@ -11,7 +11,7 @@ GROQ_API_ENDPOINT = os.environ.get("GROQ_API_ENDPOINT")
 if not GROQ_API_KEY or not GROQ_API_ENDPOINT:
     raise ValueError("GROQ_API_KEY and GROQ_API_ENDPOINT environment variables must be set.")
 
-groq_model = GroqModel(model_id="groq/llama3-8b-8192", api_key=GROQ_API_KEY)
+groq_model = GroqModel(model_id="groq/llama-3.1-8b-instant", api_key=GROQ_API_KEY)
 
 
 # --- 1. Code Agent Test ---
