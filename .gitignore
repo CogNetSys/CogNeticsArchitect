@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env
+.CogNeticsArchitect
+
+# Logs and cache
+*.log
+.pytest_cache/
+.mypy_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# System-specific files
+.DS_Store
+Thumbs.db
