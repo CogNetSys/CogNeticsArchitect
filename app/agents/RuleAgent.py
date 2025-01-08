@@ -87,6 +87,9 @@ def process_nn_output(predicted_class):
 
     print(f"Generated Rule: {rule_data['rule']}")
     print(f"Rule Data for Distribution: {json.dumps(rule_data, indent=4)}")
+
+    # Pass rule data to the RuleDistributorAgent
+    distribute_rule(rule_data)
     return rule_data
 
 
