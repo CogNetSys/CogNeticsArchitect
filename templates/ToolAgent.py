@@ -36,11 +36,11 @@ tool_calling_agent = ToolCallingAgent(
     model=your_groq_model,
     tools=[greeting_tool],
     grammar=json_grammar,
-    max_iterations=3,  # You can adjust this
+    max_steps=3,  # You can adjust this
 )
 
 # Run the agent
 result = tool_calling_agent.run(
-    "Could you greet my friend Alice using the appropriate tool?"
+    "Could you greet my friend Don using the appropriate tool?"
 )
 print(result)
