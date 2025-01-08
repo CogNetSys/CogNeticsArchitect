@@ -1,5 +1,4 @@
 import time
-import os
 import json
 import pandas as pd
 from smolagents import CodeAgent, HfApiModel, Tool
@@ -8,12 +7,11 @@ from dotenv import load_dotenv
 import re
 import sys
 
-# Add the correct path to the NN module
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../nn")))
-try:
-    from app.nn.cNN import process_structured_data  # Import the function
-except ModuleNotFoundError as e:
-    print(f"Error importing cNN module: {e}. Ensure the path and filename are correct.")
+# Add the CogNeticsArchitect root to the system path
+sys.path.append("/home/irbsurfer/Projects/CogNeticsArchitect/")
+
+# Import the NN function
+from app.nn.cNN import process_structured_data  # Import the function
 
 load_dotenv()
 
@@ -101,9 +99,9 @@ class DataExtractorTool(Tool):
 
             extracted_data = {
                 "goal": goal_match.group(0) if goal_match else "N/A",
-                "constraint": f"Budget cap: {budget_match.group(0)}"
-                if budget_match
-                else "None",
+                "constraint": (
+                    f"Budget cap: {budget_match.group(0)}" if budget_match else "None"
+                ),
                 "timeline": timeline_match.group(0) if timeline_match else "N/A",
                 "metric": metric_match.group(0) if metric_match else "N/A",
             }
@@ -160,32 +158,57 @@ code_agent = CodeAgent(
 def elicit_structured_data(input_text):
     print("\n--- Running Data Extraction ---")
     try:
+        # Extract structured data
         extraction_result = run_with_retry(
             code_agent,
             "Use the data_extractor tool to extract structured data from the input text.",
             additional_args={"input_text": input_text},
         )
 
-        if isinstance(extraction_result, dict):
-            extracted_data = extraction_result
-        else:
-            extracted_data = json.loads(extraction_result)
+        # Debug: Print the raw extraction result
+        print(f"Raw Extraction Result: {extraction_result}")
 
-        for key, value in extracted_data.items():
-            if value == "N/A":
+        # Ensure extraction result is a valid JSON string or dict
+        if isinstance(extraction_result, str):
+            try:
+                structured_data = json.loads(
+                    extraction_result.replace("'", '"')
+                )  # Convert single quotes to double quotes for JSON
+            except json.JSONDecodeError as e:
+                raise ValueError(
+                    f"Invalid JSON format in extraction result: {e}\nResult: {extraction_result}"
+                )
+        elif isinstance(extraction_result, dict):
+            structured_data = extraction_result
+        else:
+            raise ValueError(
+                f"Unexpected extraction result type: {type(extraction_result)}"
+            )
+
+        # Check if structured data is valid
+        if not isinstance(structured_data, dict):
+            raise ValueError(f"Structured data is not a dictionary: {structured_data}")
+
+        print(
+            f"\n--- Extracted Structured Data ---\n{json.dumps(structured_data, indent=4)}"
+        )
+
+        # Clarification for missing fields
+        for key, value in structured_data.items():
+            if not value or value.lower() == "n/a":
                 clarification = run_with_retry(
                     code_agent,
                     "Use the clarification_agent tool to ask for missing information.",
                     additional_args={"missing_key": key, "input_text": input_text},
                 )
-                extracted_data[key] = clarification
+                structured_data[key] = clarification
 
         print(
-            f"\n--- Final Structured Data ---\n{json.dumps(extracted_data, indent=4)}"
+            f"\n--- Final Structured Data ---\n{json.dumps(structured_data, indent=4)}"
         )
 
-        # Directly call the NN to process the structured data
-        process_structured_data(extracted_data)
+        # Pass structured data to the NN
+        process_structured_data(structured_data)
 
     except Exception as e:
         print(f"Error during structured data elicitation: {e}")

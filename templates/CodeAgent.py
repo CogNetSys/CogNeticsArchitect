@@ -11,6 +11,7 @@ load_dotenv()
 RATE_LIMIT_REQUESTS = 25  # Allow 25 requests...
 RATE_LIMIT_PERIOD = 60  # ...per 60 seconds
 
+
 # Define the DataAnalysisTool
 class DataAnalysisTool(Tool):
     name = "data_analyzer"
@@ -49,6 +50,7 @@ class DataAnalysisTool(Tool):
         except Exception as e:
             return f"Error during data analysis: {e}"
 
+
 # Initialize the Groq model using LiteLLM
 your_groq_model = LiteLLMModel(model_id="groq/llama-3.3-70b-versatile")
 
@@ -77,7 +79,7 @@ with open("sales_data.csv", "w") as f:
 try:
     result = code_agent.run(
         "Analyze the 'price' column in the dataset 'sales_data.csv' that I have uploaded to the session. Also, calculate the total value of all sales (price * quantity) and print it.",
-        additional_args={"sales_data.csv": "sales_data.csv"}
+        additional_args={"sales_data.csv": "sales_data.csv"},
     )
     print(result)
 except Exception as e:

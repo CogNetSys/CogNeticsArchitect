@@ -5,7 +5,7 @@ from smolagents import (
     ManagedAgent,
     DuckDuckGoSearchTool,
     Tool,
-    tool
+    tool,
 )
 from dotenv import load_dotenv
 import re
@@ -14,6 +14,7 @@ from markdownify import markdownify
 from requests.exceptions import RequestException
 
 load_dotenv()
+
 
 # Define the VisitWebpageTool
 @tool
@@ -44,6 +45,7 @@ def visit_webpage(url: str) -> str:
     except Exception as e:
         return f"An unexpected error occurred: {str(e)}"
 
+
 # Initialize the Groq model (replace with your preferred model)
 # model = LiteLLMModel(model_id="groq/llama3-70b-8192")
 model = HfApiModel("Qwen/Qwen2.5-Coder-32B-Instruct")
@@ -69,7 +71,7 @@ manager_agent = CodeAgent(
     max_iterations=7,
     additional_authorized_imports=["time", "numpy", "pandas"],
     use_e2b_executor=False,
-    tools=[]
+    tools=[],
 )
 
 # Run the manager agent
