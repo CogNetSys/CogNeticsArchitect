@@ -1,0 +1,40 @@
+site_name: CogNetics Architect Documentation
+site_url: https://github.com/CogNetSys/CogNeticsArchitect
+repo_url: https://github.com/CogNetSys/CogNeticsArchitect
+repo_name: GitHub
+theme:
+  name: material
+  palette:
+    primary: 'blue'
+    accent: 'light blue'
+  font:
+    text: Roboto
+    code: Roboto Mono
+  logo: docs/logo.png  # Optional: Add a logo to your `docs` folder if available
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Introduction: getting-started/introduction.md
+      - Installation: getting-started/installation.md
+      - Configuration: getting-started/configuration.md
+  - Development Guide:
+      - Overview: development/overview.md
+      - Testing: development/testing.md
+  - API Reference:
+      - Endpoints: api/endpoints.md
+      - Authentication: api/authentication.md
+  - FAQ: faq.md
+  - About: about.md
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+
+extra_css:
+  - css/custom.css  # Optional for any custom styling
+extra_javascript:
+  - js/custom.js  # Optional for any custom scripts
+
+

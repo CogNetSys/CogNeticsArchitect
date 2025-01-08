@@ -1,0 +1,16 @@
+{
+    "python.pythonPath": "CogNeticsArchitect/bin/python",
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.python",
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "**/*.pyo": true,
+      "**/.DS_Store": true
+    },
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.testing.unittestEnabled": true,
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.languageServer": "Pylance"
+  }
