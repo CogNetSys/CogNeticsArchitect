@@ -1,9 +1,3 @@
-### **1. Agent and Task Features Specification**
-
-**File:** `agent_task_features_spec.md`
-
----
-
 # Agent and Task Features Specification
 
 ## **Agent Features**
