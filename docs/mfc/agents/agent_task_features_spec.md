@@ -1,13 +1,3 @@
----
-
-**Subject:** Master ToDo List and Initial Deliverables for the MFC Project
-
-**Dear Gemini and Mike,**
-
-Understood, Mike! Let's dive right into the implementation phase of our Master Feedback Controller (MFC) project. Below, I’ve provided the initial deliverables to kickstart our development process. We’ll begin with defining the agent and task features, followed by implementing the Node Encoder architectures.
-
----
-
 ### **1. Agent and Task Features Specification**
 
 **File:** `agent_task_features_spec.md`
