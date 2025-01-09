@@ -1,4 +1,4 @@
-# node_encoder.py
+# File: mfc/mfc/encoders/node_encoder.py
 
 from sentence_transformers import SentenceTransformer
 import numpy as np
@@ -29,11 +29,17 @@ class NodeEncoder:
 
         numerical_features = np.array([
             agent_data['Current State']['Task'],
-            agent_data['Current State']['Resources']
-        ])
+            agent_data['Current State']['Resources'],
+            agent_data['Expertise Level'],
+            agent_data['Current Workload'],
+            agent_data['Reliability Score'],
+            agent_data['Latency'],
+            agent_data['Error Rate'],
+            agent_data['Cost Per Task']
+        ], dtype=float)
 
-        # One-hot encode categorical features if necessary
-        # For simplicity, assuming numerical_features are already numerical
+        # Normalize numerical features
+        numerical_features = numerical_features / numerical_features.max()
 
         # Combine embeddings
         combined_embedding = np.concatenate((text_embedding, numerical_features))
@@ -55,8 +61,17 @@ class NodeEncoder:
         numerical_features = np.array([
             task_data['Resource Requirements']['CPU'],
             task_data['Resource Requirements']['Memory'],
-            task_data['Resource Requirements']['Storage']
-        ])
+            task_data['Resource Requirements']['Storage'],
+            task_data['Computational Complexity'],
+            task_data['Memory Footprint'],
+            task_data['Data Locality'],
+            task_data['Security Level'],
+            task_data['Urgency Score'],
+            task_data['Expected Value']
+        ], dtype=float)
+
+        # Normalize numerical features
+        numerical_features = numerical_features / numerical_features.max()
 
         # Combine embeddings
         combined_embedding = np.concatenate((text_embedding, numerical_features))
@@ -87,7 +102,13 @@ if __name__ == "__main__":
             "Task": 3,
             "Resources": 5
         },
-        "Available Plugins/Tools": "Python Compiler"
+        "Available Plugins/Tools": "Python Compiler",
+        "Expertise Level": 2,          # Intermediate
+        "Current Workload": 4,
+        "Reliability Score": 0.95,
+        "Latency": 0.2,                # seconds
+        "Error Rate": 0.01,            # 1%
+        "Cost Per Task": 0.5           # arbitrary units
     }
 
     task_example = {
@@ -99,7 +120,13 @@ if __name__ == "__main__":
         },
         "Deadline": "2025-02-01",
         "Dependencies": "Task 2",
-        "Priority": "High"
+        "Priority": "High",
+        "Computational Complexity": 3,  # on a scale of 1-5
+        "Memory Footprint": 8,          # GB
+        "Data Locality": 1,             # Centralized
+        "Security Level": 2,            # Medium
+        "Urgency Score": 0.9,           # on a scale of 0-1
+        "Expected Value": 0.8           # on a scale of 0-1
     }
 
     agent_embedding = encoder.encode_agent(agent_example)

@@ -8,7 +8,7 @@ from mfc.mfc.goal_pattern_detector.context_embedding import ContextEmbedding
 from mfc.mfc.goal_pattern_detector.time_window_manager import TimeWindowManager
 from mfc.mfc.goal_pattern_detector.goal_pattern_detector import GoalPatternDetector
 from mfc.agents.CA_agent import CAAgent
-from mfc.mfc_manager import MFCManager
+from app.mfc.mfc.mfc_manager import MFCManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

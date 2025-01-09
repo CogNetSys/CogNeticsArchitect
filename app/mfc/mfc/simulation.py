@@ -11,7 +11,7 @@ from goal_pattern_detector.time_window_manager import TimeWindowManager
 from data_generation import load_time_series_data
 from collections import defaultdict
 from agents.CA_agent import CAAgent
-from mfc_manager import MFCManager
+from app.mfc.mfc.mfc_manager import MFCManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -300,30 +300,38 @@ class MFCManager:
         logging.warning("Alert triggered by GoalPatternDetector!")
 
 if __name__ == "__main__":
-    # Load external time series data
-    external_data = load_time_series_data("path_to_time_series_dataset.csv")
-
     # Initialize components
     context_embedding = ContextEmbedding()
-    time_window_manager = TimeWindowManager(fixed_size=100, overlap_ratio=0.5, max_lag=5)
+    time_window_manager = TimeWindowManager(fixed_size=10, overlap_ratio=0.5, max_lag=5)
     llm_api_key = os.getenv("OPENAI_API_KEY")  # Ensure this is set in your environment
     if llm_api_key is None:
         logging.error("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
         exit(1)
+    goal_pattern_detector = GoalPatternDetector(
+        context_embedding=context_embedding,
+        time_window_manager=time_window_manager,
+        llm_api_key=llm_api_key,
+        significance_threshold=0.05,
+        importance_scores={('CA1', 'CA2'): 2.0}
+    )
 
     # Initialize MFC Manager
     mfc_model = MFCManager(
-        config={},  # Add appropriate configuration if needed
+        config={},  # Add appropriate configuration
         context_embedding=context_embedding,
         time_window_manager=time_window_manager,
         llm_api_key=llm_api_key
     )
 
-    # Create and add CAAgents with diverse behaviors
-    for ca_id, data_sequence in external_data.items():
-        behavior_type = random.choice(['oscillatory', 'dependent', 'sudden_change', 'default'])
-        agent = CAAgent(unique_id=ca_id, model=mfc_model, initial_state=0, behavior=behavior_type)
-        mfc_model.add_agent(agent)
+    # Initialize CAs
+    ca1 = CAAgent(unique_id='CA1', model=mfc_model, initial_state=0, initial_resource=5, behavior='default')
+    ca2 = CAAgent(unique_id='CA2', model=mfc_model, initial_state=0, initial_resource=5, behavior='dependent')
+    ca3 = CAAgent(unique_id='CA3', model=mfc_model, initial_state=0, initial_resource=5, behavior='oscillatory')
+
+    # Add agents to MFC Manager
+    mfc_model.add_agent(ca1)
+    mfc_model.add_agent(ca2)
+    mfc_model.add_agent(ca3)
 
     # Run Simulation for 50 steps
     mfc_model.run_mfc(steps=50)
