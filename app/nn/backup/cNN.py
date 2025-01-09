@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf  # Neural network import
-from app.mfc.agents.rule_agent import process_nn_output
+from app.agents.RuleAgent import (
+    process_nn_output,
+)  # Import function to process the demand class
 import json
 
 # Sample neural network model initialization
