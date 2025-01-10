@@ -1,27 +1,51 @@
 # File: mfc/mfc/mfc_manager.py
 
-from mfc.encoder.node_encoder import NodeEncoder
+from typing import Dict, Any, List
 import numpy as np
+import logging
+
+from mfc.encoder.node_encoder import NodeEncoder
+from mfc.modules.feedback_aggregator import FeedbackAggregator
+from mfc.modules.deephydra_anomaly_detector import DeepHYDRAAnomalyDetector
+from mfc.modules.decision_making import DecisionMakingModule
+from mfc.modules.communication import CommunicationModule
+from agents.CA_agent import CAAgent
 
 class MFCManager:
-    def __init__(self, config, context_embedding, time_window_manager, llm_api_key):
+    """
+    Manages the overall coordination of agents, encoding processes, resource allocation, and communication within the MFC.
+
+    File: mfc/mfc/mfc_manager.py
+    """
+
+    def __init__(self, config: Dict[str, Any], llm_api_key: str):
         """
         Initializes the MFC Manager with required components.
 
         Args:
-            config (dict): Configuration settings for the MFC.
-            context_embedding (ContextEmbedding): The context embedding component.
-            time_window_manager (TimeWindowManager): Manages time windows for data aggregation.
+            config (Dict[str, Any]): Configuration settings for the MFC.
             llm_api_key (str): API key for the language model.
         """
         self.config = config
-        self.context_embedding = context_embedding
-        self.time_window_manager = time_window_manager
         self.llm_api_key = llm_api_key
         self.node_encoder = NodeEncoder()
-        self.agents = {}
+        self.agents: Dict[str, CAAgent] = {}
 
-    def add_agent(self, agent):
+        # Initialize modules
+        self.feedback_aggregator = FeedbackAggregator(anomaly_detector=None)  # To be set after DeepHYDRA is initialized
+        self.decision_making = DecisionMakingModule(resource_inventory=config.get("resource_inventory", {}))
+        self.communication_module = CommunicationModule(protocol_settings=config.get("protocol_settings", {}))
+
+    def set_anomaly_detector(self, anomaly_detector):
+        """
+        Sets the anomaly detector for the Feedback Aggregator.
+
+        Args:
+            anomaly_detector: An instance of an anomaly detection class.
+        """
+        self.feedback_aggregator.anomaly_detector = anomaly_detector
+
+    def add_agent(self, agent: CAAgent):
         """
         Adds a CA Agent to the MFC Manager.
 
@@ -29,13 +53,14 @@ class MFCManager:
             agent (CAAgent): The CA Agent to add.
         """
         self.agents[agent.unique_id] = agent
+        logging.info(f"Agent {agent.unique_id} added to MFC Manager.")
 
-    def encode_agents(self):
+    def encode_agents(self) -> Dict[str, np.ndarray]:
         """
         Encodes all agents' features.
 
         Returns:
-            dict: A dictionary mapping agent IDs to their embeddings.
+            Dict[str, np.ndarray]: A dictionary mapping agent IDs to their embeddings.
         """
         agent_embeddings = {}
         for agent_id, agent in self.agents.items():
@@ -56,17 +81,18 @@ class MFCManager:
             }
             embedding = self.node_encoder.encode_agent(agent_data)
             agent_embeddings[agent_id] = embedding
+        logging.info("All agent embeddings encoded.")
         return agent_embeddings
 
-    def encode_tasks(self, tasks):
+    def encode_tasks(self, tasks: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
         """
         Encodes task features.
 
         Args:
-            tasks (list): List of task dictionaries.
+            tasks (List[Dict[str, Any]]): A list of task dictionaries.
 
         Returns:
-            dict: A dictionary mapping task IDs to their embeddings.
+            Dict[str, np.ndarray]: A dictionary mapping task IDs to their embeddings.
         """
         task_embeddings = {}
         for task in tasks:
@@ -85,20 +111,48 @@ class MFCManager:
             }
             embedding = self.node_encoder.encode_task(task_data)
             task_embeddings[task['id']] = embedding
+        logging.info("All task embeddings encoded.")
         return task_embeddings
 
-    def run_mfc(self, steps):
+    def run_mfc(self, tasks: List[Dict[str, Any]], steps: int):
         """
-        Runs the MFC for a specified number of steps.
+        Runs the MFC for a specified number of steps, processing tasks and managing resources.
 
         Args:
+            tasks (List[Dict[str, Any]]): A list of task dictionaries to be managed.
             steps (int): Number of simulation steps to run.
         """
         for step in range(steps):
-            print(f"--- MFC Step {step + 1} ---")
+            logging.info(f"--- MFC Step {step + 1} ---")
+
             # Encode agents and tasks
             agent_embeddings = self.encode_agents()
-            # Assume tasks are defined elsewhere
-            # task_embeddings = self.encode_tasks(tasks)
-            # Further processing...
-            # Update agents, allocate resources, etc.
+            task_embeddings = self.encode_tasks(tasks)
+
+            # Aggregate feedback from agents
+            feedback_list = [agent.get_feedback() for agent in self.agents.values()]
+            aggregated_feedback = self.feedback_aggregator.aggregate_feedback(feedback_list)
+
+            # Prioritize tasks
+            prioritized_tasks = self.decision_making.prioritize_tasks(task_embeddings, agent_embeddings)
+
+            # Allocate resources
+            allocation = self.decision_making.allocate_resources(prioritized_tasks, agent_embeddings)
+
+            # Communicate allocations to agents
+            for task_id, resources in allocation.items():
+                message = {
+                    "task_id": task_id,
+                    "allocated_resources": resources
+                }
+                # For simplicity, assign to the first available agent
+                if self.agents:
+                    recipient_id = next(iter(self.agents))
+                    self.communication_module.send_message(recipient_id, message)
+
+            # Update agents
+            for agent in self.agents.values():
+                neighbors = agent.get_neighbors()
+                agent.step(neighbors)
+
+            logging.info(f"Step {step + 1} completed.")
