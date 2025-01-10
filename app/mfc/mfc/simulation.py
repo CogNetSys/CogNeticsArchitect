@@ -1,337 +1,230 @@
-# mfc/mfc/simulation.py
+# File: mfc/mfc/simulation.py
 
 import os
+import time
 import random
 import logging
-from datetime import datetime
-from typing import Dict, List, Optional
-from goal_pattern_detector.goal_pattern_detector import GoalPatternDetector
-from goal_pattern_detector.context_embedding import ContextEmbedding
-from goal_pattern_detector.time_window_manager import TimeWindowManager
-from data_generation import load_time_series_data
+from typing import Any, Dict, List, Tuple
+import numpy as np
 from collections import defaultdict
-from agents.CA_agent import CAAgent
-from app.mfc.mfc.mfc_manager import MFCManager
+
+from app.mfc.mfc.goal_pattern_detector.context_embedding import ContextEmbedding
+from app.mfc.mfc.goal_pattern_detector.time_window_manager import TimeWindowManager
+from mfc.encoder.node_encoder import NodeEncoder
+from mfc.modules.feedback_aggregator import FeedbackAggregator
+from mfc.modules.deephydra_anomaly_detector import DeepHYDRAAnomalyDetector
+from mfc.modules.decision_making import DecisionMakingModule
+from mfc.modules.communication import CommunicationModule
+from mfc.agents.CA_agent import CAAgent
+from mfc.mfc_manager import MFCManager
+from mfc.data_generation import load_time_series_data, generate_synthetic_time_series_data, create_anomalous_data
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class CAAgent:
-    def __init__(self, unique_id: str, model, initial_state: int = 0, initial_resource: int = 5, message_queue: Optional[List[str]] = None, behavior: Optional[str] = None):
-        """
-        Initializes a CA Agent with specified behaviors.
+def initialize_components(config: Dict[str, Any]) -> Tuple[ContextEmbedding, TimeWindowManager, DeepHYDRAAnomalyDetector, MFCManager]:
+    """
+    Initializes the core components of the MFC system.
 
-        Args:
-            unique_id (str): Unique identifier for the CA.
-            model: The MFC model this agent is part of.
-            initial_state (int): Initial state of the CA.
-            initial_resource (int): Initial resource level of the CA.
-            message_queue (Optional[list]): A queue to store messages for the agent.
-            behavior (str): The behavior type of the CA (e.g., 'oscillatory', 'dependent', 'sudden_change').
-        """
-        self.unique_id = unique_id
-        self.model = model
-        self.state = initial_state
-        self.resource = initial_resource
-        self.message_queue = message_queue or []
-        self.behavior = behavior or 'default'
-        self.behavior_params = {'noise_std': 0.5}  # Example parameter; can be extended
+    Args:
+        config (dict): Configuration settings for the components.
 
-    def step(self, neighbors: List['CAAgent']):
-        """
-        Executes a simulation step for the CA Agent.
+    Returns:
+        tuple: Instances of ContextEmbedding, TimeWindowManager, DeepHYDRAAnomalyDetector, and MFCManager.
+    """
+    context_embedding = ContextEmbedding()
+    time_window_manager = TimeWindowManager(**config['time_window_manager'])
 
-        Args:
-            neighbors (List[CAAgent]): List of neighboring CA agents.
-        """
-        # Process incoming messages
-        while self.message_queue:
-            message = self.message_queue.pop(0)
-            if message == "Increase":
-                self.state += 1
-                logging.debug(f"{self.unique_id} received 'Increase' message and updated state to {self.state}")
+    # Initialize DeepHYDRA Anomaly Detector with a placeholder model
+    anomaly_detector = DeepHYDRAAnomalyDetector()
 
-        # Execute behavior based on type
-        if self.behavior == 'oscillatory':
-            self.oscillatory_behavior()
-        elif self.behavior == 'dependent':
-            self.dependent_behavior(neighbors)
-        elif self.behavior == 'sudden_change':
-            self.sudden_change_behavior()
-        else:
-            self.default_behavior()
+    # Initialize the MFC Manager with necessary components
+    mfc_manager = MFCManager(
+        config=config,
+        llm_api_key=os.getenv("OPENAI_API_KEY"),
+        feedback_aggregator=FeedbackAggregator(anomaly_detector=anomaly_detector),
+        decision_making=DecisionMakingModule(resource_inventory=config.get("resource_inventory", {})),
+        communication_module=CommunicationModule(protocol_settings=config.get("protocol_settings", {}))
+    )
 
-        # Ensure state stays within bounds [0, 10]
-        self.state = max(0, min(self.state, 10))
+    return context_embedding, time_window_manager, anomaly_detector, mfc_manager
 
-        # Resource management
-        resource_change = random.choice([-2, -1, 0, 1, 2])
-        self.resource = max(0, min(self.resource + resource_change, 10))
-        logging.debug(f"{self.unique_id} resource level: {self.resource}")
+def initialize_agents(mfc_manager: MFCManager, num_agents: int = 3):
+    """
+    Initializes and adds CA agents to the MFC Manager.
 
-        # Send messages based on current state
-        if self.state > 5 and neighbors:
-            neighbor = random.choice(neighbors)
-            self.send_message(neighbor, "Increase")
+    Args:
+        mfc_manager (MFCManager): The MFC Manager instance.
+        num_agents (int): The number of CA agents to create.
+    """
+    for i in range(num_agents):
+        agent = CAAgent(unique_id=f'CA{i+1}', model=mfc_manager, initial_state=0, initial_resource=5, behavior='default')
+        mfc_manager.add_agent(agent)
 
-    def oscillatory_behavior(self):
-        """
-        Defines oscillatory behavior for the CA Agent.
-        """
-        oscillate_pattern = [1, 2, 3, 2, 1]
-        self.state = oscillate_pattern[self.state % len(oscillate_pattern)]
-        logging.debug(f"{self.unique_id} performed oscillatory behavior. New state: {self.state}")
+def generate_tasks(num_tasks: int = 10) -> List[Dict[str, Any]]:
+    """
+    Generates a list of tasks with predefined attributes.
 
-    def dependent_behavior(self, neighbors: List['CAAgent']):
-        """
-        Defines dependent behavior where the agent reacts to neighbors.
+    Args:
+        num_tasks (int): The number of tasks to generate.
 
-        Args:
-            neighbors (List[CAAgent]): List of neighboring CA agents.
-        """
-        if neighbors:
-            # Example: React to the first neighbor's state
-            neighbor = neighbors[0]
-            if neighbor.state > 2:
-                self.state += 1
-                logging.debug(f"{self.unique_id} reacts to {neighbor.unique_id}'s state. New state: {self.state}")
-
-    def sudden_change_behavior(self):
-        """
-        Defines sudden change behavior for the CA Agent.
-        """
-        if random.random() < 0.3:
-            self.state += 2  # Sudden jump
-            logging.warning(f"{self.unique_id} experienced a sudden change. New state: {self.state}")
-        else:
-            self.state -= 1  # Gradual decrease
-
-    def default_behavior(self):
-        """
-        Defines default behavior for the CA Agent.
-        """
-        if random.random() < 0.5:
-            self.state += 1
-        else:
-            self.state -= 1
-        logging.debug(f"{self.unique_id} performed default behavior. New state: {self.state}")
-
-    def send_message(self, neighbor: 'CAAgent', message: str):
-        """
-        Sends a message to a neighboring CA Agent.
-
-        Args:
-            neighbor (CAAgent): The neighboring CA Agent to send the message to.
-            message (str): The message content.
-        """
-        neighbor.receive_message(message)
-        logging.debug(f"{self.unique_id} sent message '{message}' to {neighbor.unique_id}")
-
-    def receive_message(self, message: str):
-        """
-        Receives a message from another CA Agent.
-
-        Args:
-            message (str): The message content.
-        """
-        self.message_queue.append(message)
-        logging.debug(f"{self.unique_id} received message '{message}'.")
-
-
-class MFCManager:
-    def __init__(self, config: Dict, context_embedding: ContextEmbedding, time_window_manager: TimeWindowManager, llm_api_key: str):
-        """
-        Initializes the MFCManager.
-
-        Args:
-            config (dict): Configuration parameters for the MFC.
-            context_embedding (ContextEmbedding): Instance of ContextEmbedding.
-            time_window_manager (TimeWindowManager): Instance of TimeWindowManager.
-            llm_api_key (str): API key for the LLM (e.g., OpenAI).
-        """
-        self.agents: Dict[str, CAAgent] = {}
-        self.context_embedding = context_embedding
-        self.time_window_manager = time_window_manager
-        self.goal_pattern_detector = GoalPatternDetector(
-            significance_threshold=0.05,
-            min_pattern_length=3,
-            initial_threshold=0.9,
-            min_threshold=0.6,
-            adaptation_rate=0.05,
-            fixed_window_size=100,
-            max_windows=100,
-            llm_api_key=llm_api_key
-        )
-        self.metrics = {
-            'execution_time': [],
-            'memory_usage': [],
-            'patterns_detected': [],
-            'unique_patterns': [],
-            'rules_generated': [],
-            'errors': []
+    Returns:
+        List[Dict[str, Any]]: A list of task dictionaries.
+    """
+    tasks = []
+    for i in range(num_tasks):
+        task = {
+            "id": f"Task{i+1}",
+            "type": random.choice(["TypeA", "TypeB", "TypeC"]),
+            "resource_requirements": {
+                "CPU": random.randint(1, 4),
+                "Memory": random.randint(1, 16),
+                "Storage": random.randint(10, 100)
+            },
+            "deadline": f"2025-02-{random.randint(10, 28)}",
+            "dependencies": random.sample([f"Task{j}" for j in range(1, i + 1)], random.randint(0, min(i, 3))),
+            "priority": random.choice(["High", "Medium", "Low"]),
+            "computational_complexity": random.randint(1, 5),
+            "memory_footprint": random.randint(1, 16),
+            "data_locality": random.choice(["Local", "Edge", "Cloud"]),
+            "security_level": random.choice(["Confidential", "Restricted", "Public"]),
+            "urgency_score": round(random.uniform(0.5, 1.0), 2),
+            "expected_value": round(random.uniform(0.4, 1.0), 2),
+            "precedence_relations": []
         }
-        logging.info("Initialized MFCManager.")
+        tasks.append(task)
+    return tasks
 
-    def add_agent(self, agent: CAAgent):
-        """
-        Adds a CA Agent to the MFC.
+def run_simulation(mfc_manager: MFCManager, tasks: List[Dict[str, Any]], steps: int = 50):
+    """
+    Runs the MFC simulation for a specified number of steps.
 
-        Args:
-            agent (CAAgent): The CA Agent to add.
-        """
-        self.agents[agent.unique_id] = agent
-        logging.info(f"Added agent {agent.unique_id} with behavior {agent.behavior}.")
-
-    def run_mfc(self, steps: int = 1000, prune_interval: int = 100, min_weight: int = 5):
-        """
-        Runs the MFC simulation for a specified number of steps.
-
-        Args:
-            steps (int): Number of simulation steps to run.
-            prune_interval (int): Interval at which to prune the pattern graph.
-            min_weight (int): Minimum weight threshold for pruning.
-        """
-        for step in range(steps):
-            logging.info(f"--- Simulation Step {step+1} ---")
-            try:
-                # Update all agents
-                for agent in self.agents.values():
-                    neighbors = self.get_neighbors(agent.unique_id)
-                    agent.step(neighbors)
-
-                # Collect data for pattern detection
-                data = {ca_id: agent.state for ca_id, agent in self.agents.items()}
-
-                # Record transitions and contexts
-                for ca_id, state in data.items():
-                    # Example: Dummy previous state; replace with actual tracking
-                    old_state = {'state': state - 1} if state > 0 else {'state': 0}
-                    new_state = {'state': state}
-                    context = {
-                        'ca_states': data,
-                        'resources': {ca_id: agent.resource for ca_id, agent in self.agents.items()},
-                        'active_goals': [],  # Extend as needed
-                        'environment': {}  # Extend as needed
-                    }
-                    self.goal_pattern_detector.record_state_transition(
-                        ca_id=ca_id,
-                        old_state=old_state,
-                        new_state=new_state,
-                        context=context
-                    )
-
-                # Detect patterns
-                patterns = self.goal_pattern_detector.detect_temporal_patterns(data, adaptive=True)
-                self.metrics['patterns_detected'].append(len(patterns))
-                self.metrics['unique_patterns'].append(len(self.goal_pattern_detector.patterns))
-                self.metrics['rules_generated'].append(len(self.goal_pattern_detector.rules))
-
-                # Log patterns
-                for pattern in patterns:
-                    logging.info(f"Detected Pattern: {pattern}")
-
-                # Act on detected patterns and generated rules
-                for pattern in patterns:
-                    rule = pattern['rule']
-                    # Example action: Execute the rule's action
-                    self.execute_rule(rule)
-
-                # Prune the pattern graph at defined intervals
-                if (step + 1) % prune_interval == 0:
-                    self.goal_pattern_detector.prune_pattern_graph(min_weight=min_weight)
-
-            except Exception as e:
-                logging.error(f"Error during simulation step {step+1}: {e}")
-                self.metrics['errors'].append(str(e))
-
-            # TODO: Collect and record additional metrics as needed
-
-    def get_neighbors(self, ca_id: str) -> List[CAAgent]:
-        """
-        Retrieves neighboring CA Agents for a given CA Agent.
-
-        Args:
-            ca_id (str): The ID of the CA Agent.
-
-        Returns:
-            list: List of neighboring CA Agents.
-        """
-        # Placeholder for neighbor retrieval logic
-        # For simplicity, return all other agents as neighbors
-        return [agent for id_, agent in self.agents.items() if id_ != ca_id]
-
-    def execute_rule(self, rule: str):
-        """
-        Executes the action specified in the IF-THEN rule.
-
-        Args:
-            rule (str): The IF-THEN rule to execute.
-        """
-        if rule == "IF [conditions] THEN [actions].":
-            logging.warning("Received default fallback rule. No action taken.")
-            return
-
-        # Simple parser to extract actions
+    Args:
+        mfc_manager (MFCManager): The MFC manager instance.
+        tasks (List[Dict[str, Any]]): A list of task dictionaries to be processed.
+        steps (int): Number of simulation steps to run.
+    """
+    for step in range(steps):
+        logging.info(f"--- Starting MFC Step {step + 1} ---")
         try:
-            actions_part = rule.split("then")[1].strip().strip('.')
-            actions = actions_part.split(" and ")
-            for action in actions:
-                if "increase resource allocation" in action:
-                    self.increase_resources()
-                elif "trigger an alert" in action:
-                    self.trigger_alert()
-                # Add more action handlers as needed
-            logging.info(f"Executed actions from rule: {rule}")
-        except IndexError:
-            logging.error(f"Rule parsing failed for rule: {rule}")
+            # Distribute rules and collect feedback
+            mfc_manager.distribute_rules()
+            feedback = mfc_manager.collect_feedback()
 
-    def increase_resources(self):
-        """
-        Example action to increase resource allocation.
-        """
-        for agent in self.agents.values():
-            agent.resource = min(agent.resource + 1, 10)
-            logging.debug(f"Increased resources for {agent.unique_id} to {agent.resource}")
+            # Analyze patterns and adjust resource allocation
+            mfc_manager.analyze_patterns(feedback)
+            mfc_manager.adjust_resource_allocation()
 
-    def trigger_alert(self):
-        """
-        Example action to trigger an alert.
-        """
-        logging.warning("Alert triggered by GoalPatternDetector!")
+            # Encode agents and tasks
+            agent_embeddings = mfc_manager.encode_agents()
+            task_embeddings = mfc_manager.encode_tasks(tasks)
+
+            # Prioritize tasks and allocate resources
+            prioritized_tasks = mfc_manager.decision_making.prioritize_tasks(task_embeddings, agent_embeddings)
+            allocation = mfc_manager.decision_making.allocate_resources(prioritized_tasks, agent_embeddings)
+
+            # Communicate allocations to agents
+            for task_id, resources in allocation.items():
+                message = {
+                    "task_id": task_id,
+                    "allocated_resources": resources
+                }
+                if mfc_manager.agents:
+                    recipient_id = next(iter(mfc_manager.agents))
+                    mfc_manager.communication_module.send_message(recipient_id, message)
+
+            # Update agents
+            for agent in mfc_manager.agents.values():
+                neighbors = agent.get_neighbors()
+                agent.step(neighbors)
+
+            # Log outcomes
+            logging.info(f"Completed MFC Step {step + 1} with allocation: {allocation}")
+
+        except Exception as e:
+            logging.error(f"Error during MFC step {step + 1}: {e}")
 
 if __name__ == "__main__":
-    # Initialize components
-    context_embedding = ContextEmbedding()
-    time_window_manager = TimeWindowManager(fixed_size=10, overlap_ratio=0.5, max_lag=5)
-    llm_api_key = os.getenv("OPENAI_API_KEY")  # Ensure this is set in your environment
-    if llm_api_key is None:
-        logging.error("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
-        exit(1)
-    goal_pattern_detector = GoalPatternDetector(
-        context_embedding=context_embedding,
-        time_window_manager=time_window_manager,
-        llm_api_key=llm_api_key,
-        significance_threshold=0.05,
-        importance_scores={('CA1', 'CA2'): 2.0}
-    )
+    # Load configuration
+    config = {
+        "time_window_manager": {
+            "fixed_size": 10,
+            "overlap_ratio": 0.5,
+            "max_lag": 5
+        },
+        "detector": {
+            "significance_threshold": 0.05,
+            "importance_scores": {
+                ('CA1', 'CA2'): 2.0
+            }
+        },
+        "deep_hydra_model_path": None,  # Update this with the actual path
+        "resource_inventory": {
+            "CPU": 10,
+            "Memory": 32,  # in GB
+            "Storage": 500  # in GB
+        },
+        "communication_protocol": {
+            "communication_mode": "AC2C",
+            "encryption": "TLS/SSL"
+        },
+        "agents": [
+            {
+                "unique_id": 'CA1',
+                "initial_state": 0,
+                "initial_resource": 5,
+                "behavior": 'default',
+                "base_model": 'GPT-4',
+                "role": 'Programmer',
+                "tools": ['Python Compiler'],
+                "expertise_level": 2,
+                "current_workload": 4,
+                "reliability_score": 0.95,
+                "latency": 0.2,
+                "error_rate": 0.01,
+                "cost_per_task": 0.5
+            },
+            {
+                "unique_id": 'CA2',
+                "initial_state": 0,
+                "initial_resource": 5,
+                "behavior": 'dependent',
+                "base_model": 'LLaMA-2',
+                "role": 'Data Analyst',
+                "tools": ['Database Connector'],
+                "expertise_level": 3,
+                "current_workload": 3,
+                "reliability_score": 0.90,
+                "latency": 0.25,
+                "error_rate": 0.02,
+                "cost_per_task": 0.6
+            },
+            {
+                "unique_id": 'CA3',
+                "initial_state": 0,
+                "initial_resource": 5,
+                "behavior": 'oscillatory',
+                "base_model": 'Mistral-7B',
+                "role": 'Mathematician',
+                "tools": ['Math Solver'],
+                "expertise_level": 4,
+                "current_workload": 5,
+                "reliability_score": 0.98,
+                "latency": 0.15,
+                "error_rate": 0.005,
+                "cost_per_task": 0.7
+            }
+        ]
+    }
 
-    # Initialize MFC Manager
-    mfc_model = MFCManager(
-        config={},  # Add appropriate configuration
-        context_embedding=context_embedding,
-        time_window_manager=time_window_manager,
-        llm_api_key=llm_api_key
-    )
+    # Initialize system components
+    context_embedding, time_window_manager, anomaly_detector, mfc_manager = initialize_components(config)
 
-    # Initialize CAs
-    ca1 = CAAgent(unique_id='CA1', model=mfc_model, initial_state=0, initial_resource=5, behavior='default')
-    ca2 = CAAgent(unique_id='CA2', model=mfc_model, initial_state=0, initial_resource=5, behavior='dependent')
-    ca3 = CAAgent(unique_id='CA3', model=mfc_model, initial_state=0, initial_resource=5, behavior='oscillatory')
+    # Create and add CA agents
+    initialize_agents(mfc_manager)
 
-    # Add agents to MFC Manager
-    mfc_model.add_agent(ca1)
-    mfc_model.add_agent(ca2)
-    mfc_model.add_agent(ca3)
+    # Generate tasks
+    tasks = generate_tasks(num_tasks=10)
 
-    # Run Simulation for 50 steps
-    mfc_model.run_mfc(steps=50)
+    # Run the simulation
+    run_simulation(mfc_manager, tasks, steps=50)

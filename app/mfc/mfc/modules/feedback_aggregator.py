@@ -3,15 +3,14 @@
 from typing import List, Dict, Any
 import numpy as np
 import logging
+# from .deephydra_anomaly_detector import DeepHYDRAAnomalyDetector
 
 class FeedbackAggregator:
     """
     Aggregates feedback from multiple Cellular Automata (CAs) and detects anomalies.
-
-    File: mfc/mfc/modules/feedback_aggregator.py
     """
 
-    def __init__(self, anomaly_detector):
+    def __init__(self, anomaly_detector=None):
         """
         Initializes the FeedbackAggregator with an anomaly detection component.
 
@@ -46,9 +45,12 @@ class FeedbackAggregator:
         aggregated["average_state"] = np.mean(states)
         aggregated["average_resource"] = np.mean(resources)
 
-        # Detect anomalies
-        anomalies = self.anomaly_detector.detect_anomalies(feedback_list)
-        aggregated["anomalies"] = anomalies
+        # Detect anomalies using the provided anomaly detector
+        if self.anomaly_detector:
+            anomalies = self.anomaly_detector.detect_anomalies(feedback_list)
+            aggregated["anomalies"] = anomalies
+        else:
+            logging.warning("Anomaly detector not initialized.")
 
         logging.info(f"Aggregated Feedback: {aggregated}")
         return aggregated

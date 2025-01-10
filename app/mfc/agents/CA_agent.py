@@ -1,34 +1,55 @@
-# mfc/agents/ca_agent.py
+# File: mfc/agents/CA_agent.py
+
 import random
 import logging
 
 class CAAgent:
-    def __init__(self, unique_id, model, initial_state=0, initial_resource=5, message_queue=None):
+    def __init__(self, unique_id, model, initial_state=0, initial_resource=5, message_queue=None, behavior=None,
+                 base_model=None, role=None, tools=None, expertise_level=None, current_workload=None,
+                 reliability_score=None, latency=None, error_rate=None, cost_per_task=None):
         """
-        Initializes a CA Agent.
+        Initializes a CA Agent with specified behaviors.
 
         Args:
             unique_id (str): Unique identifier for the CA.
-            model (MFCModel): The MFC model this agent is part of.
+            model (MFCManager): The MFC model this agent is part of.
             initial_state (int): Initial state of the CA.
             initial_resource (int): Initial resource level of the CA.
             message_queue (Optional[list]): A queue to store messages for the agent.
+            behavior (str): The behavior type of the CA (e.g., 'oscillatory', 'dependent', 'sudden_change').
+            base_model (str): The foundational language model used by the agent.
+            role (str): The specialized function or expertise area of the agent.
+            tools (list): Tools that the agent can utilize to perform tasks.
+            expertise_level (int): The level of expertise of the agent.
+            current_workload (int): The current workload of the agent.
+            reliability_score (float): The reliability score of the agent.
+            latency (float): Average response time of the agent.
+            error_rate (float): Frequency of errors or failures in task execution.
+            cost_per_task (float): Cost associated with using the agent.
         """
         self.unique_id = unique_id
         self.model = model
         self.state = initial_state
         self.resource = initial_resource
         self.message_queue = message_queue or []
-
-    def send_message(self, target_agent, message: str):
-        """Sends a message to a target agent."""
-        if target_agent is not None:
-            target_agent.message_queue.append(message)
-            logging.debug(f"{self.unique_id} sent message to {target_agent.unique_id}: {message}")
+        self.behavior = behavior or 'default'
+        self.behavior_params = {'noise_std': 0.5}  # Example parameter; can be extended
+        self.base_model = base_model
+        self.role = role
+        self.tools = tools
+        self.expertise_level = expertise_level
+        self.current_workload = current_workload
+        self.reliability_score = reliability_score
+        self.latency = latency
+        self.error_rate = error_rate
+        self.cost_per_task = cost_per_task
 
     def step(self, neighbors):
         """
-        Defines the state transition logic for the CA, considering messages from neighbors.
+        Executes a simulation step for the CA Agent.
+
+        Args:
+            neighbors (List[CAAgent]): List of neighboring CA agents.
         """
         # Process incoming messages
         while self.message_queue:
@@ -37,33 +58,92 @@ class CAAgent:
                 self.state += 1
                 logging.debug(f"{self.unique_id} received 'Increase' message and updated state to {self.state}")
 
-        # State transition logic based on CA ID
-        if self.unique_id == 'CA1':
-            # CA1 increments its state with a 70% probability
-            if random.random() < 0.7:
-                self.state += 1
-        elif self.unique_id == 'CA2':
-            # CA2 decrements its state with a 50% probability
-            if random.random() < 0.5:
-                self.state -= 1
-        elif self.unique_id == 'CA3':
-            # CA3 toggles its state between 0 and 1
-            self.state = 1 - self.state
+        # Execute behavior based on type
+        if self.behavior == 'oscillatory':
+            self.oscillatory_behavior()
+        elif self.behavior == 'dependent':
+            self.dependent_behavior(neighbors)
+        elif self.behavior == 'sudden_change':
+            self.sudden_change_behavior()
+        else:
+            self.default_behavior()
 
         # Ensure state stays within bounds [0, 10]
         self.state = max(0, min(self.state, 10))
 
         # Resource management
-        resource_change = random.choice([-1, 0, 1])
+        resource_change = random.choice([-2, -1, 0, 1, 2])
         self.resource = max(0, min(self.resource + resource_change, 10))
-
-        logging.debug(f"{self.unique_id} state updated to {self.state}, resource level: {self.resource}")
+        logging.debug(f"{self.unique_id} resource level: {self.resource}")
 
         # Send messages based on current state
         if self.state > 5 and neighbors:
             # Randomly select a neighbor to send a message to
             neighbor = random.choice(neighbors)
             self.send_message(neighbor, "Increase")
+
+    def oscillatory_behavior(self):
+        """
+        Defines oscillatory behavior for the CA Agent.
+        """
+        oscillate_pattern = [1, 2, 3, 2, 1]
+        self.state = oscillate_pattern[self.state % len(oscillate_pattern)]
+        logging.debug(f"{self.unique_id} performed oscillatory behavior. New state: {self.state}")
+
+    def dependent_behavior(self, neighbors):
+        """
+        Defines dependent behavior where the agent reacts to neighbors.
+
+        Args:
+            neighbors (List[CAAgent]): List of neighboring CA agents.
+        """
+        if neighbors:
+            # Example: React to the first neighbor's state
+            neighbor = neighbors[0]
+            if neighbor.state > 2:
+                self.state += 1
+                logging.debug(f"{self.unique_id} reacts to {neighbor.unique_id}'s state. New state: {self.state}")
+
+    def sudden_change_behavior(self):
+        """
+        Defines sudden change behavior for the CA Agent.
+        """
+        if random.random() < 0.3:
+            self.state += 2  # Sudden jump
+            logging.warning(f"{self.unique_id} experienced a sudden change. New state: {self.state}")
+        else:
+            self.state -= 1  # Gradual decrease
+
+    def default_behavior(self):
+        """
+        Defines default behavior for the CA Agent.
+        """
+        if random.random() < 0.5:
+            self.state += 1
+        else:
+            self.state -= 1
+        logging.debug(f"{self.unique_id} performed default behavior. New state: {self.state}")
+
+    def send_message(self, neighbor, message):
+        """
+        Sends a message to a neighboring CA Agent.
+
+        Args:
+            neighbor (CAAgent): The neighboring CA Agent to send the message to.
+            message (str): The message content.
+        """
+        neighbor.receive_message(message)
+        logging.debug(f"{self.unique_id} sent message '{message}' to {neighbor.unique_id}")
+
+    def receive_message(self, message):
+        """
+        Receives a message from another CA Agent.
+
+        Args:
+            message (str): The message content.
+        """
+        self.message_queue.append(message)
+        logging.debug(f"{self.unique_id} received message '{message}'.")
 
     def get_neighbors(self):
         """
@@ -73,7 +153,7 @@ class CAAgent:
             list: A list of neighboring CAAgent instances.
         """
         neighbors = []
-        for agent in self.model.schedule.agents:
+        for agent in self.model.agents.values():
             if agent != self and self.model.is_neighbor(self.unique_id, agent.unique_id):
                 neighbors.append(agent)
         return neighbors
