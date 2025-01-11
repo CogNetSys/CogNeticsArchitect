@@ -1,3 +1,6 @@
+# app/ca/OnboardingCA.py
+
+
 from app.ca.CellularAutomaton import CellularAutomaton
 
 class OnboardingCA(CellularAutomaton):

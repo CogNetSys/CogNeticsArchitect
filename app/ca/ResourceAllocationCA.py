@@ -1,3 +1,5 @@
+# app/ca/ResourceAllocationCA.py
+
 from app.ca.CellularAutomaton import CellularAutomaton
 
 class ResourceAllocationCA(CellularAutomaton):

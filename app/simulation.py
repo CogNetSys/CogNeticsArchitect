@@ -1,4 +1,4 @@
-# File: mfc/mfc/simulation.py
+# File: app/simulation.py
 
 import os
 import json

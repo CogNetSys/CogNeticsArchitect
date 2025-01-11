@@ -36,6 +36,7 @@ class NodeEncoder:
             agent_data['Cost Per Task']
         ], dtype=float)
 
+        # Normalize numerical features to a 0-1 range
         numerical_features = numerical_features / (np.max(numerical_features) if np.any(numerical_features) else 1)
 
         combined_embedding = np.concatenate((
@@ -69,6 +70,7 @@ class NodeEncoder:
             task_data['Expected Value']
         ], dtype=float)
 
+        # Normalize numerical features to a 0-1 range
         numerical_features = numerical_features / (np.max(numerical_features) if np.any(numerical_features) else 1)
 
         dependencies_numerical = self.encode_dependencies(task_data['Dependencies'])

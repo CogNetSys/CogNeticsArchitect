@@ -1,3 +1,5 @@
+# app/ca/CellularAutomaton.py
+
 class CellularAutomaton:
     def __init__(self, context, name="Unnamed CA"):
         self.context = context  # Initialize the context attribute

@@ -1,4 +1,4 @@
-# File: mfc/mfc/agents/rule_distributor_agent.py
+# File: app/mfc/agents/rule_distributor_agent.py
 
 import logging
 from typing import Dict, Any

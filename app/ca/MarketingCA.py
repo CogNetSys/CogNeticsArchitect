@@ -1,3 +1,5 @@
+# app/ca/MarketingCA.py
+
 from app.ca.CellularAutomaton import CellularAutomaton
 
 class MarketingCA(CellularAutomaton):
