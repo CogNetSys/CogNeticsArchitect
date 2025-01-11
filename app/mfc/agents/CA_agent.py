@@ -2,6 +2,7 @@
 
 import random
 import logging
+from typing import Any, Dict
 
 class CAAgent:
     def __init__(self, unique_id, model, initial_state=0, initial_resource=5, message_queue=None, behavior=None,
@@ -43,6 +44,7 @@ class CAAgent:
         self.latency = latency
         self.error_rate = error_rate
         self.cost_per_task = cost_per_task
+        self.rules = []  # Initialize an empty list to store rules
 
     def step(self, neighbors):
         """
@@ -67,6 +69,9 @@ class CAAgent:
             self.sudden_change_behavior()
         else:
             self.default_behavior()
+
+        # Apply rules
+        self.apply_rules()
 
         # Ensure state stays within bounds [0, 10]
         self.state = max(0, min(self.state, 10))
@@ -123,6 +128,26 @@ class CAAgent:
         else:
             self.state -= 1
         logging.debug(f"{self.unique_id} performed default behavior. New state: {self.state}")
+
+    def apply_rules(self):
+        """
+        Applies assigned rules to the CA Agent.
+        """
+        for rule in self.rules:
+            # Example: Apply rule based on task type
+            task_type = rule.get("task_type")
+            action = rule.get("action")
+
+            if task_type == "Development" and action == "Increase workload":
+                self.current_workload += 1
+                logging.info(f"{self.unique_id} increased workload to {self.current_workload} based on rule.")
+            elif task_type == "Data Analysis" and action == "Optimize resources":
+                self.resource = max(1, self.resource - 1)
+                logging.info(f"{self.unique_id} optimized resources to {self.resource} based on rule.")
+            elif task_type == "Mathematical Computation" and action == "Allocate more memory":
+                self.resource += 2
+                logging.info(f"{self.unique_id} allocated more memory to {self.resource} based on rule.")
+            # Add more rule conditions as needed
 
     def send_message(self, neighbor, message):
         """
@@ -188,3 +213,13 @@ class CAAgent:
             "state": self.state,
             "resource": self.resource
         }
+
+    def receive_rule(self, rule: Dict[str, Any]):
+        """
+        Receives a rule from the RuleDistributorAgent.
+
+        Args:
+            rule (Dict[str, Any]): The rule to be applied.
+        """
+        self.rules.append(rule)
+        logging.info(f"{self.unique_id} received rule: {rule}")

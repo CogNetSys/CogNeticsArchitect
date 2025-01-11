@@ -2,6 +2,7 @@
 
 import logging
 from typing import Dict, Any, List
+import numpy as np
 
 class OnlineLearningManager:
     """

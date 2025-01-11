@@ -1,0 +1,64 @@
+{
+    "time_window_manager": {
+        "fixed_size": 10,
+        "overlap_ratio": 0.5,
+        "max_lag": 5
+    },
+    "resource_inventory": {
+        "CPU": 10,
+        "Memory": 32,
+        "Storage": 500
+    },
+    "communication_protocol": {
+        "communication_mode": "AC2C",
+        "encryption": "TLS/SSL"
+    },
+    "deep_hydra_model_path": null,
+    "agents": [
+        {
+            "unique_id": "MarketingCA",
+            "initial_state": 0,
+            "initial_resource": 5,
+            "behavior": "default",
+            "base_model": "GPT-4",
+            "role": "Marketer",
+            "tools": ["MarketingTool"],
+            "expertise_level": 3,
+            "current_workload": 4,
+            "reliability_score": 0.95,
+            "latency": 0.2,
+            "error_rate": 0.01,
+            "cost_per_task": 0.5
+        },
+        {
+            "unique_id": "ResourceAllocationCA",
+            "initial_state": 0,
+            "initial_resource": 5,
+            "behavior": "dependent",
+            "base_model": "LLaMA-2",
+            "role": "Resource Allocator",
+            "tools": ["AllocationTool"],
+            "expertise_level": 4,
+            "current_workload": 3,
+            "reliability_score": 0.90,
+            "latency": 0.25,
+            "error_rate": 0.02,
+            "cost_per_task": 0.6
+        },
+        {
+            "unique_id": "OnboardingCA",
+            "initial_state": 0,
+            "initial_resource": 5,
+            "behavior": "oscillatory",
+            "base_model": "Mistral-7B",
+            "role": "Onboarding Specialist",
+            "tools": ["OnboardingTool"],
+            "expertise_level": 5,
+            "current_workload": 5,
+            "reliability_score": 0.98,
+            "latency": 0.15,
+            "error_rate": 0.005,
+            "cost_per_task": 0.7
+        }
+    ]
+}
