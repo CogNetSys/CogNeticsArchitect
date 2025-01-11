@@ -130,7 +130,7 @@ The `NodeEncoder` class is responsible for encoding agent and task features into
     Ensure you have the necessary Python packages installed. You can install them using `pip`:
 
     ```bash
-    pip install sentence-transformers numpy pandas logging
+    pip install sentence-transformers numpy pandas logging pytest
     ```
 
 2. **Initialize the NodeEncoder:**
@@ -190,13 +190,13 @@ The `NodeEncoder` class is responsible for encoding agent and task features into
 
 5. **Running Unit Tests:**
 
-    To ensure the `NodeEncoder` is functioning correctly, run the provided unit tests:
+    To ensure the `NodeEncoder` is functioning correctly, run the provided unit tests using `pytest`:
 
     ```bash
-    python test_node_encoder.py
+    pytest mfc/encoders/test/test_node_encoder.py
     ```
 
-### **Notes**
+### Notes
 
 *   The current implementation uses the `all-MiniLM-L6-v2` model for generating sentence embeddings. This can be changed by specifying a different `model_name` when initializing the `NodeEncoder`.
 *   The `encode_graph` method is a placeholder for future implementations involving graph-level feature encoding.

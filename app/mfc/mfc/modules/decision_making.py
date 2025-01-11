@@ -7,8 +7,6 @@ import logging
 class DecisionMakingModule:
     """
     Implements the IPRO algorithm for resource allocation and task prioritization.
-
-    File: mfc/mfc/modules/decision_making.py
     """
 
     def __init__(self, resource_inventory: Dict[str, Any]):

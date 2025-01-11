@@ -7,8 +7,6 @@ from typing import Dict, Any
 class CommunicationModule:
     """
     Handles communication between the MFC and Cellular Automata (CAs) using the AC2C protocol.
-
-    File: mfc/mfc/modules/communication.py
     """
 
     def __init__(self, protocol_settings: Dict[str, Any]):

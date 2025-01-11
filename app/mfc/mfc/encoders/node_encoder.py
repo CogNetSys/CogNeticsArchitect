@@ -5,6 +5,7 @@ import numpy as np
 import json
 import torch
 from collections import OrderedDict
+import logging
 
 class NodeEncoder:
     def __init__(self, model_name='all-MiniLM-L6-v2'):
@@ -27,17 +28,14 @@ class NodeEncoder:
         tools_multi_hot = [1 if tool in agent_data['Available Plugins/Tools'] else 0 for tool in tools_all]
 
         numerical_features = np.array([
-            agent_data['Current State']['Task'],
-            agent_data['Current State']['Resources'],
-            agent_data['Current Workload'],
-            agent_data['Reliability Score'],
-            agent_data['Latency'],
-            agent_data['Error Rate'],
-            agent_data['Cost Per Task']
+            agent_data['Current State'].get('Task', 0),
+            agent_data['Current State'].get('Resources', 0),
+            agent_data.get('Current Workload', 0),
+            agent_data.get('Reliability Score', 0),
+            agent_data.get('Latency', 0),
+            agent_data.get('Error Rate', 0),
+            agent_data.get('Cost Per Task', 0)
         ], dtype=float)
-
-        # Normalize numerical features to a 0-1 range
-        numerical_features = numerical_features / (np.max(numerical_features) if np.any(numerical_features) else 1)
 
         combined_embedding = np.concatenate((
             text_embedding,
@@ -61,17 +59,14 @@ class NodeEncoder:
         security_onehot = self.one_hot_encode(task_data['Security Level'], ['Confidential', 'Restricted', 'Public'])
 
         numerical_features = np.array([
-            task_data['Resource Requirements']['CPU'],
-            task_data['Resource Requirements']['Memory'],
-            task_data['Resource Requirements']['Storage'],
-            task_data['Computational Complexity'],
-            task_data['Memory Footprint'],
-            task_data['Urgency Score'],
-            task_data['Expected Value']
+            task_data['Resource Requirements'].get('CPU', 0),
+            task_data['Resource Requirements'].get('Memory', 0),
+            task_data['Resource Requirements'].get('Storage', 0),
+            task_data.get('Computational Complexity', 0),
+            task_data.get('Memory Footprint', 0),
+            task_data.get('Urgency Score', 0),
+            task_data.get('Expected Value', 0)
         ], dtype=float)
-
-        # Normalize numerical features to a 0-1 range
-        numerical_features = numerical_features / (np.max(numerical_features) if np.any(numerical_features) else 1)
 
         dependencies_numerical = self.encode_dependencies(task_data['Dependencies'])
         precedence_numerical = self.encode_precedence_relations(task_data.get('Precedence Relations', []))
@@ -121,6 +116,8 @@ class NodeEncoder:
         encoding = np.zeros(len(categories))
         if value in categories:
             encoding[categories.index(value)] = 1
+        else:
+            print(f"Warning: Value '{value}' not found in categories. Assigning all zeros.")
         return encoding
 
     def encode_graph(self, graph_data):
